@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-// ... other imports ...
+import Modal from '../components/common/Modal';
+import CreateJobForm from '../features/jobs/CreateJobForm';
+import EditJobForm from '../features/jobs/EditJobForm';
 import { JobListItem } from '../features/jobs/JobListItem';
+
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 
@@ -16,9 +19,8 @@ function JobsBoardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
 
-  useEffect(() => {
+  const fetchJobs = () => {
     setLoading(true);
-    // Build the URL with search and filter params
     const url = `/jobs?page=${currentPage}&pageSize=${PAGE_SIZE}&status=${statusFilter}&search=${searchTerm}`;
     
     fetch(url)
@@ -32,67 +34,79 @@ function JobsBoardPage() {
         console.error("Error fetching jobs:", error);
         setLoading(false);
       });
-  }, [currentPage, statusFilter, searchTerm]); // Re-fetch when filters change
+  };
 
-  // When filters change, go back to page 1
   useEffect(() => {
-    setCurrentPage(1);
+    fetchJobs();
+  }, [currentPage, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    if(!loading) setCurrentPage(1);
   }, [statusFilter, searchTerm]);
 
-  // Client-side filtering is no longer needed!
-  // const filteredJobs = ... THIS IS REMOVED
+  const handleCreateNewJobClick = () => { /* ... */ };
+  const handleEditClick = (job) => { /* ... */ };
+  const handleModalClose = () => { /* ... */ };
+  const handleJobCreated = () => { /* ... */ };
+  const handleJobUpdated = (updatedJob) => { /* ... */ };
+  const handleStatusToggle = async (jobId, newStatus) => { /* ... */ };
+  const handleDragEnd = (event) => { /* ... */ };
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  // ... all handle functions (handleDragEnd, handleModalClose, etc.) remain the same ...
-
   return (
     <div>
-      {/* ... Heading and Create Button ... */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-bold text-cyan-400">Jobs Board</h2>
+        <button onClick={handleCreateNewJobClick} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded">
+          + Create New Job
+        </button>
+      </div>
       
-      {/* Filter UI Section */}
       <div className="p-4 bg-gray-800 rounded-lg flex items-center space-x-4">
-        <input
-          type="text"
-          placeholder="Search by title..."
-          className="bg-gray-700 text-white px-4 py-2 rounded-md w-1/3"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="bg-gray-700 text-white px-4 py-2 rounded-md"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
+        <input type="text" placeholder="Search by title..." className="bg-gray-700 text-white px-4 py-2 rounded-md w-1/3" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <select className="bg-gray-700 text-white px-4 py-2 rounded-md" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">All Statuses</option>
           <option value="active">Active</option>
           <option value="archived">Archived</option>
         </select>
       </div>
 
-      {/* Jobs List Section */}
       <div className="mt-8">
         {loading ? (
           <p className="text-gray-400">Loading jobs...</p>
         ) : (
           <>
-            <DndContext /* ... */>
-              <SortableContext items={jobs} /* ... */ >
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext
+                items={jobs.map(job => job.id)}
+                strategy={verticalListSortingStrategy}
+              >
                 <ul className="space-y-4">
-                  {/* We now map directly over 'jobs' because the API sends the filtered list */}
                   {jobs.map(job => (
-                    <JobListItem key={job.id} /* ...props... */ />
+                    <JobListItem key={job.id} job={job} onEdit={handleEditClick} onStatusToggle={handleStatusToggle} />
                   ))}
                 </ul>
               </SortableContext>
             </DndContext>
-            
-            {/* ... Pagination Controls ... */}
+            <div className="mt-8 flex justify-center items-center space-x-4">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50">Previous</button>
+              <span className="text-white">Page {currentPage} of {totalPages}</span>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50">Next</button>
+            </div>
           </>
         )}
       </div>
 
-      {/* ... Modal ... */}
+      {isModalOpen && (
+        <Modal isOpen={isModalOpen} onClose={handleModalClose}>
+          {editingJob ? (
+            <EditJobForm job={editingJob} onClose={handleModalClose} onJobUpdated={handleJobUpdated} />
+          ) : (
+            <CreateJobForm onClose={handleModalClose} onJobCreated={handleJobCreated} />
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
