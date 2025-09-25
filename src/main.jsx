@@ -5,14 +5,9 @@ import './index.css';
 import { BrowserRouter } from 'react-router-dom';
 
 async function enableMocking() {
-  if (process.env.NODE_ENV !== 'development') {
-    return;
-  }
- 
+  // Humne yahan se development check wali 'if' condition hata di hai
+  // Ab mock server hamesha start hoga
   const { worker } = await import('./api/browser.js');
- 
-  // `worker.start()` returns a Promise that resolves
-  // once the Service Worker is up and running.
   return worker.start();
 }
  
