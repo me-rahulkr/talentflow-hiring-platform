@@ -11,6 +11,7 @@ async function enableMocking() {
  
 enableMocking().then(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
+    // StrictMode abhi ke liye removed hai
     <BrowserRouter>
       <App />
     </BrowserRouter>

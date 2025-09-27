@@ -1,47 +1,51 @@
 import { http, HttpResponse } from 'msw';
-import { faker } from '@faker-js/faker';
 import { db } from '../lib/db';
 
+// Jobs data abhi bhi on-the-fly generate ho raha hai kyunki woh kam hai
 const allJobs = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, title: `Software Engineer ${i + 1}`, status: i % 3 === 0 ? 'archived' : 'active', tags: ['React', 'Node.js', `Tag-${i % 5}`] }));
-const candidateStages = ['applied', 'screen', 'tech', 'offer', 'hired', 'rejected'];
-const allCandidates = Array.from({ length: 1050 }, (_, i) => ({ id: i + 1, name: faker.person.fullName(), email: faker.internet.email().toLowerCase(), stage: candidateStages[Math.floor(Math.random() * candidateStages.length)], jobId: Math.floor(Math.random() * allJobs.length) + 1 }));
 
 export const handlers = [
-  // JOBS
+  // --- JOBS HANDLERS ---
   http.get('/jobs', ({ request }) => {
+    // ... Jobs GET handler waisa hi rahega ...
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '10');
     const status = url.searchParams.get('status');
     const search = url.searchParams.get('search');
-
-    // Server-side filtering logic
     let filteredJobs = allJobs;
-
-    if (status && status !== 'all') {
-      filteredJobs = filteredJobs.filter(job => job.status === status);
-    }
-    if (search) {
-      filteredJobs = filteredJobs.filter(job => job.title.toLowerCase().includes(search.toLowerCase()));
-    }
-
+    if (status && status !== 'all') { filteredJobs = filteredJobs.filter(job => job.status === status); }
+    if (search) { filteredJobs = filteredJobs.filter(job => job.title.toLowerCase().includes(search.toLowerCase())); }
     const totalCount = filteredJobs.length;
-
-    // Pagination logic (applied after filtering)
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     const paginatedJobs = filteredJobs.slice(start, end);
+    return HttpResponse.json({ jobs: paginatedJobs, totalCount: totalCount });
+  }),
+  http.post('/jobs', async ({ request }) => { /* ... jobs POST handler ... */ }),
+  http.patch('/jobs/:jobId', async ({ request, params }) => { /* ... jobs PATCH handler ... */ }),
+
+  // --- CANDIDATES HANDLERS (UPDATED) ---
+  http.get('/candidates', async ({ request }) => {
+    // Ab hum static JSON file se data fetch karenge
+    const response = await fetch('/candidates.json');
+    const allCandidates = await response.json();
+
+    // Pagination logic waisi hi rahegi
+    const url = new URL(request.url);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '1100');
+    const start = 0;
+    const end = start + pageSize;
+    const paginatedCandidates = allCandidates.slice(start, end);
 
     return HttpResponse.json({
-      jobs: paginatedJobs,
-      totalCount: totalCount,
+      candidates: paginatedCandidates,
+      totalCount: allCandidates.length,
     });
   }),
-  // ... other handlers ...
-  http.post('/jobs', async ({ request }) => { /* ... */ }),
-  http.patch('/jobs/:jobId', async ({ request, params }) => { /* ... */ }),
-  http.get('/candidates', ({ request }) => { /* ... */ }),
-  http.patch('/candidates/:candidateId', async ({ request, params }) => { /* ... */ }),
+  http.patch('/candidates/:candidateId', async ({ request, params }) => { /* ... candidates PATCH handler ... */ }),
+  
+  // --- ASSESSMENTS HANDLERS ---
   http.get('/assessments/:jobId', async ({ params }) => { /* ... */ }),
   http.put('/assessments/:jobId', async ({ request, params }) => { /* ... */ }),
 ];
